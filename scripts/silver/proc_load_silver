@@ -17,3 +17,219 @@ Usage Example:
     EXEC Silver.load_silver;
 ===============================================================================
 */
+-- MySQL version of 'Load Silver Layer' stored procedure
+DELIMITER //
+
+CREATE PROCEDURE load_datasets()
+BEGIN
+	
+    -- Variables to store time before and after each step for measuring duration
+    DECLARE start_time DATETIME;
+    DECLARE end_time DATETIME;
+    
+    SELECT "=========================================" AS '';
+    SELECT "Loading Silver Layer"  AS '';
+    SELECT "=========================================" AS '';
+    
+    -- STEP 1: Loading silver.crm_cust_info;
+	-- Goal: Deduplicate, clean, and standardize customer data
+     SET start_time = NOW(); 
+     
+    TRUNCATE TABLE silver.crm_cust_info;
+    
+    INSERT INTO silver.crm_cust_info( 
+		cst_id,
+		cst_key,
+		cst_firstname,
+		cst_lastname,
+		cst_marital_status,
+		cst_gndr,
+		cst_create_date
+    )
+    
+    SELECT 
+		cst_id,
+        cst_key,
+        TRIM(cst_firstname),
+        TRIM(cst_lastname),
+        CASE
+			WHEN UPPER(TRIM(cst_marital_status)) = 'S' THEN 'Single'
+            WHEN UPPER(TRIM(cst_marital_status)) = 'M' THEN 'Married'
+            ELSE 'n/a'
+		END,
+        CASE
+			WHEN UPPER(TRIM(cst_gndr)) = 'F' THEN 'Female'
+            WHEN UPPER(TRIM(cst_gndr)) = 'M' THEN 'Male'
+            ELSE 'n/a'
+		END,
+        cst_create_date
+	FROM (
+		SELECT *,
+			ROW_NUMBER() OVER (PARTITION BY cst_id ORDER BY cst_create_date DESC) as RN
+		FROM bronze.crm_cust_info
+        WHERE cst_id IS NOT NULL
+	) AS sub
+    WHERE rn = 1;
+    
+    SET end_time = NOW();
+    SELECT CONCAT("Load Duration: ", TIMESTAMPDIFF(SECOND, start_time, end_time), ' seconds') AS '';
+
+-- STEP 2
+-- Goal: Extract and clean product and category data
+
+	SELECT '>>Loading silver.crm_prd_info' AS '';
+    SET start_time = NOW();
+    
+    TRUNCATE TABLE silver.crm_prd_info;
+    
+    INSERT INTO silver.crm_prd_info(
+		prd_id,
+        cat_id,
+        prd_key,
+        prd_nm,
+        prd_cost,
+        prd_line,
+        prd_start_dt,
+        prd_end_dt
+    )
+    SELECT 
+		prd_id,
+        REPLACE(SUBSTRING(prd_key, 1, 5), '-', '_'),
+        SUBSTRING(prd_key, 7),
+        prd_nm,
+        IFNULL(prd_cost, 0),
+        CASE
+			WHEN UPPER(TRIM(prd_line)) = 'M' THEN 'Mountain'      -- Map product line codes to readable names
+            WHEN UPPER(TRIM(prd_line)) = 'R' THEN 'Road'
+            WHEN UPPER(TRIM(prd_line)) = 'S' THEN 'Other Sales'
+            WHEN UPPER(TRIM(prd_line)) = 'T' THEN 'Touring'
+            ELSE 'n/a'
+		END, 
+        prd_start_dt,
+        prd_end_dt
+	FROM bronze.crm_prd_info;
+    
+    SET end_time = NOW();
+    SELECT CONCAT('Load Duration: ', TIMESTAMPDIFF(SECOND, start_time, end_time), ' seconds') AS '';
+    
+-- STEP 3: Load CRM Sales Details
+-- Goal: Convert dates, fix null/invalid prices & sales, and load clean sales transactions
+
+	SELECT ">>Loading silver.crm_sales_details" AS '';
+	SET start_time = NOW();
+    
+    TRUNCATE TABLE silver.crm_sales_details;
+    
+    INSERT INTO silver.crm_sales_details(
+		sls_ord_num,
+        sls_prd_key,
+        sls_cust_id,
+        sls_order_dt,
+        sls_ship_dt,
+        sls_due_dt,
+        sls_sales,
+        sls_quantity,
+        sls_price
+	)
+    SELECT 
+		sls_ord_num,
+        sls_prd_key,
+        sls_cust_id,
+        NULLIF(STR_TO_DATE(sls_order_dt, '%Y%m%d'), '0000-00-00'),
+        NULLIF(STR_TO_DATE(sls_prd_key, '%Y%m%d'), '0000-00-00'),
+        NULLIF(STR_TO_DATE(sls_cust_id, '%Y%m%d'), '0000-00-00'),
+        IF(sls_sales IS NULL OR sls_sales <= 0 OR sls_sales != sls_quality * ABS(sls_price),
+			sls_quantity * ABS(sls_price),
+            sls_sales),
+		sls_quantity,
+        IF (sls_price IS NULL OR sls_price <= 0,
+			sls_sales / NULLIF(sls_quantity, 0),
+            sls_price)
+	FROM bronze.crm_sales_details;
+    
+    SET end_time = NOW();
+    SELECT CONCAT('Load Duration: ', TIMESTAMPDIFF(SECOND, start_time, end_time), ' seconds') AS '';
+    
+-- STEP 4: Load ERP Customer Info
+-- Goal: Clean up ERP customer IDs and remove invalid birthdates
+
+	SELECT '>>Load silver.erp_cust_az12' AS '';
+	SET start_time = NOW();
+    
+    TRUNCATE TABLE silver.erp_cust_az12;
+    
+    INSERT INTO silver.erp_cust_az12(
+		cid, 
+        bdate,
+        gen
+	)
+    SELECT
+		IF(LEFT(cid, 3) = 'NAS', SUBSTRING(cid, 4), cid),
+        IF(bdate > CURDATE(), NULL, bdate),
+        CASE
+			WHEN UPPER(TRIM(gen)) IN ('F', 'FEMALE') THEN 'Female'
+            WHEN UPPER(TRIM(gen)) IN ('M', 'MALE') THEN 'Male'
+            ELSE 'n/a'
+		END
+	FROM bronze.silver_cust_az12;
+    
+    SET end_time = NOW();
+    SELECT CONCAt("Load Duration: ", TIMESTAMPDIFF(SECOND, start_time, end_time), ' seconds') AS '';
+    
+-- STEP 5: Load ERP Location Info
+-- Goal: Normalize country names and clean up IDs
+
+	SELECT '>> Loading silver.erp_loc_a101' AS '';
+    SET start_time = NOW();
+    
+    TRUNCATE TABLE silver.erp_loc_a101;
+    
+    INSERT INTO silver_erp_loc_a101(
+		cid,
+        cntry
+	)
+    SELECT 
+		REPLACE(cid, '-', ''),
+        CASE 
+			WHEN TRIM(cntry) = 'DE' THEN 'Germany'
+			WHEN TRIM(cntry) IN ('US', 'USA') THEN 'United States'
+			WHEN TRIM(cntry) = '' OR cntry IS NULL THEN 'n/a'
+			ELSE TRIM(cntry)
+		END
+	FROM bronze.erp_loc_a101;
+    
+    SET end_time = NOW();
+    SELECT CONCAT('Load Duration: ', TIMESTAMPDIFF(SECOND, start_time, end_time), ' seconds') AS '';
+    
+-- STEP 6: Load ERP Product Category Info
+-- Goal: Just transfer data without transformation
+
+	SELECT '>> Loading silver.erp_px_cat_g1v2' AS '';
+    SET start_time = NOW();
+
+    TRUNCATE TABLE silver.erp_px_cat_g1v2;
+
+    INSERT INTO silver.erp_px_cat_g1v2 (
+        id,
+        cat,
+        subcat,
+        maintenance
+    )
+    SELECT
+        id,
+        cat,
+        subcat,
+        maintenance
+    FROM bronze.erp_px_cat_g1v2;
+   
+
+    SET end_time = NOW();
+    SELECT CONCAT('Load Duration: ', TIMESTAMPDIFF(SECOND, start_time, end_time), ' seconds') AS '';
+
+ 
+    SELECT '============================' AS '';
+    SELECT 'Silver Layer Loading Complete' AS '';
+    SELECT '============================' AS '';
+END //
+
+DELIMITER ;
