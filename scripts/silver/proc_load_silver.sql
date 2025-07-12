@@ -1,4 +1,4 @@
-/*
+*/
 ===============================================================================
 Stored Procedure: Load Silver Layer (Bronze -> Silver)
 ===============================================================================
@@ -17,8 +17,6 @@ Usage Example:
     EXEC Silver.load_silver;
 ===============================================================================
 */
--- MySQL version of 'Load Silver Layer' stored procedure
-DELIMITER //
 
 DROP PROCEDURE IF EXISTS silver_load_silver;
 DELIMITER //
