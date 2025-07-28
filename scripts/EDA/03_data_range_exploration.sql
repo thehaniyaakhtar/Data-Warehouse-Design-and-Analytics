@@ -1,18 +1,15 @@
-
 /*
 ===============================================================================
-Dimensions Exploration
+Date Range Exploration 
 ===============================================================================
 Purpose:
-    - To explore the structure of dimension tables.
-	
+    - To determine the temporal boundaries of key data points.
+    - To understand the range of historical data.
+
 SQL Functions Used:
-    - DISTINCT
-    - ORDER BY
+    - MIN(), MAX(), DATEDIFF()
 ===============================================================================
 */
-
--- Retrieve a list of unique countries from which customers originate
 
 SELECT * 
 FROM gold_fact_sales
