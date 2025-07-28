@@ -1,102 +1,89 @@
-# 📊 Data Warehouse and Analytics Project
+# 🛠️ Customer Intelligence Analytics Pipeline (Bronze → Gold)
 
-Welcome to the **Data Warehouse and Analytics Project** repository! 🚀
-This project demonstrates a comprehensive data warehousing and analytics solution—from building a modern data architecture to delivering actionable business insights. It follows industry best practices in data engineering, modeling, and analytics.
+**📊 Transforming Raw Retail Sales into Strategic Customer KPIs & Segments**
 
----
+## 🚀 Project Summary
 
-## 🏗️ Data Architecture
+This project simulates a real-world **Retail Sales Analytics** pipeline by implementing a **Bronze → Silver → Gold** layered data architecture using SQL. Starting from raw transactional data, we clean, model, and transform it into powerful **customer-level insights** and **business-ready metrics**. The final output powers dashboards, CRM systems, and data-driven decision-making.
 
-This project implements the **Medallion Architecture** across three layers:
+Built using:
 
-* **Bronze Layer**: Stores raw data ingested from source systems (ERP and CRM) as-is.
-* **Silver Layer**: Cleanses, standardizes, and transforms data for analysis.
-* **Gold Layer**: Stores business-ready data in a star schema optimized for reporting and analytics.
-
----
-
-## 📖 Project Overview
-
-This end-to-end data project includes:
-
-* **Data Architecture**: Designing a modern warehouse using Medallion Architecture.
-* **ETL Pipelines**: Extracting, transforming, and loading data using SQL.
-* **Data Modeling**: Creating fact and dimension tables for analytical workloads.
-* **Analytics & Reporting**: Generating insights via SQL-based reports and dashboards.
+* **SQL (MySQL)** for transformation logic
+* **DB Browser for SQLite** for testing and debugging
+* Structured as an **end-to-end analytical data pipeline**
 
 ---
 
-## 🎯 Skill Areas Highlighted
+## 🧠 What Makes This Project Different?
 
-This project demonstrates capabilities in:
-
-* SQL Development
-* Data Engineering
-* ETL Pipeline Design
-* Data Modeling
-* Business Intelligence & Analytics
-* Data Architecture Design
+🔹 **Customer Intelligence Focus**: Goes beyond product-level sales to generate customer KPIs like RFM (Recency, Frequency, Monetary), lifespan, segment tags (VIP, Regular, New), and age-based grouping.
+🔹 **Real-World Business Relevance**: Produces explainable metrics like Average Order Value (AOV), Monthly Spend, and Customer Lifespan — directly useful for marketing and retention.
+🔹 **Gold-Layer KPIs**: Final data is transformed into a **clean, joinable view (`gold_report_customers`)** with 360° customer insights, powering **self-service BI dashboards**.
 
 ---
 
-## 🛠️ Tools & Technologies
+## 🧱 Architecture Overview
 
-* **SQL Server Express**: Hosting the relational database.
-* **SQL Server Management Studio (SSMS)**: For managing and querying the database.
-* **Draw\.io**: For designing architecture and data models.
-* **Git & GitHub**: For version control and collaboration.
-* **CSV Files**: Source data from ERP and CRM systems.
-
----
-
-## 🚀 Project Requirements
-
-### 📌 Data Engineering (Warehouse)
-
-* **Objective**: Build a modern data warehouse to consolidate sales data and support analytics.
-* **Data Sources**: Two CSV-based systems (ERP and CRM).
-* **Scope**:
-
-  * Clean and resolve data quality issues.
-  * Integrate data into a unified analytical model.
-  * Focus on the latest dataset; historization not required.
-  * Provide comprehensive documentation for data stakeholders.
-
-### 📌 Data Analysis (BI Reporting)
-
-* **Objective**: Deliver insights on:
-
-  * Customer Behavior
-  * Product Performance
-  * Sales Trends
-* **Approach**: SQL-based analytical queries and reporting views.
-
----
-
-## 📂 Repository Structure
-
+```plaintext
+Raw CSV Data
+     ↓
+Bronze Layer: Loaded as-is into staging tables
+     ↓
+Silver Layer: Cleaned, validated, and de-duplicated tables
+     ↓
+Gold Layer: Business-ready views with customer KPIs and segmentation
 ```
-data-warehouse-project/
-│
-├── datasets/                           # Raw ERP and CRM datasets (CSV files)
-│
-├── docs/                               # Documentation and diagrams
-│   ├── etl.drawio                      # ETL pipeline visualization
-│   ├── data_architecture.drawio        # High-level architecture design
-│   ├── data_catalog.md                 # Field definitions and metadata
-│   ├── data_flow.drawio                # Data flow diagram
-│   ├── data_models.drawio              # Star schema and data modeling diagrams
-│   ├── naming-conventions.md           # Standards for naming tables/columns
-│
-├── scripts/                            # SQL scripts for data processing
-│   ├── bronze/                         # Ingest raw data
-│   ├── silver/                         # Cleanse and transform data
-│   ├── gold/                           # Final analytics-ready data models
-│
-├── tests/                              # Data quality and validation checks
-│
-├── README.md                           # Project overview and setup
-├── LICENSE                             # Open-source license
-├── .gitignore                          # Git ignore rules
-└── requirements.txt                    # Project dependencies
-```
+
+---
+
+## 📌 Key Components
+
+### 🔹 Bronze Layer
+
+* Raw transactional and customer CSVs loaded into tables
+* No transformations applied
+
+### 🔹 Silver Layer
+
+* Cleaned invalid dates, null fields, and inconsistent keys
+* Ensured referential integrity and filtered valid records
+
+### 🔹 Gold Layer (Core Focus)
+
+Created a consolidated view: `gold_report_customers`, which includes:
+
+| Feature             | Description                                         |
+| ------------------- | --------------------------------------------------- |
+| `customer_name`     | Full name of the customer                           |
+| `age_group`         | Bucketed age (Under 20, 20–29, ..., 50+)            |
+| `customer_segment`  | VIP / Regular / New based on lifespan & total spend |
+| `total_sales`       | Total amount spent                                  |
+| `total_orders`      | Number of distinct orders                           |
+| `avg_order_value`   | Total sales ÷ orders                                |
+| `avg_monthly_spend` | Total sales ÷ lifespan (months)                     |
+| `lifespan`          | Active months between first & last purchase         |
+| `recency`           | Months since last purchase                          |
+
+---
+
+## 📈 13 Business Insights Extracted
+
+After creating the gold layer, the following business-focused queries were executed:
+
+| Insight                               | Description                                       |
+| ------------------------------------- | ------------------------------------------------- |
+| 1. Total Revenue by Product Category  | Identify top-performing categories for promotions |
+| 2. Category-wise Revenue Contribution | Allocate marketing resources smartly              |
+| 3. Top 5 Products by Revenue          | Optimize inventory & ads for best sellers         |
+| 4. AOV by Category                    | Drive bundling and upselling strategies           |
+| 5. Monthly Revenue Trends             | Track seasonal performance shifts                 |
+| 6. Monthly Sales per Category         | Improve demand forecasting                        |
+| 7. Avg Customer Age per Category      | Enable targeted demographic marketing             |
+| 8. RFM Analysis                       | Power loyalty scoring and lifecycle models        |
+| 9. Segmenting Customers               | Tag as VIP, Regular, or New for priority handling |
+| 10. Age Group Distribution            | Create age-specific campaigns                     |
+| 11. Customer Lifespan                 | Support churn prediction                          |
+| 12. Customer-Level Metrics            | Feed into CRM dashboards                          |
+| 13. Gold View Creation                | Enable self-service BI for stakeholders           |
+
+---
